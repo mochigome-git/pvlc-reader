@@ -1,0 +1,231 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>Counter</title>
+	<link rel="shortcut icon" href="favicon.png">
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+		body { height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #f1c40f; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; }
+		.counter-container { display: flex; flex-direction: column; align-items: center; }
+		.counter { text-transform: uppercase; color: #fff; font-weight: bold; font-size: 3rem; }
+		.btn-row { display: flex; align-items: center; margin: 1rem; }
+		.btn { cursor: pointer; min-width: 4em; padding: 1em; border-radius: 5px; text-align: center; margin: 0 1rem; box-shadow: 0 6px #8b5e00; color: white; background-color: #E4B702; position: relative; font-weight: bold; }
+		.btn:hover { box-shadow: 0 4px #8b5e00; top: 2px; }
+		.btn:active { box-shadow: 0 1px #8b5e00; top: 5px; }
+		.tab-container { width: 600px; display: none; color: #ffffff; font-weight: bold; font-size: 20px; background-color: rgba(0, 0, 0, 0);  padding: 1rem; border-radius: 5px; margin-top: 2rem;} 
+		.tab-container input[type="text"],
+		.tab-container input[type="password"] { width: 300px; background-color: transparent; border: none; color: #312803; margin-bottom: 1rem;	padding: 0.5rem; font-size: 18px; outline: none;}
+		.tab-container input[type="text"]:hover,
+		.tab-container input[type="password"]:hover { background-color: rgba(0, 0, 255, 0.1); }
+		.tab-container input[type="text"]:focus,
+		.tab-container input[type="password"]:focus { background-color: rgba(0, 0, 255, 0.2); }
+		.active { display: block; }
+		.config-bar { position: fixed; top: 0; left: 0; width: 100%; background-color: #E4B702; display: flex; justify-content: center; padding: 0.5rem; }
+		.config-bar .btn { margin-right: 1rem; display: flex; cursor: pointer; min-width: 3em; padding: 0.5em; border-radius: 5px; text-align: center; margin: 0 0.5rem; box-shadow: 0 4px #8b5e00; color: white; background-color: #E4B702; position: relative; font-weight: bold; }
+		.light-bulb {  width: 30px;  height: 30px; border-radius: 50%; background-color: red; margin-left: 1rem;}
+		.light-bulb.green { background-color: green; }
+		.joborder-input { width: 100px; background-color: transparent; border: none; margin-left: -1em; padding: 0.5rem; font-size: 18px; outline: none; color: #fff; font-weight: bold; font-family: 'Helvetica Neue', Arial, sans-serif; }
+		.joborder { text-align: center; color: white; position: relative; font-weight: bold; margin-right: 0.5rem; }
+		.month-select { min-width: 4em; padding: 0.5em; border-radius: 5px; margin-right: 0.5rem; box-shadow: 0 6px #8b5e00; color: white; background-color: #E4B702; position: relative; font-weight: bold; }
+	</style>
+</head>
+
+<body onload="start()">
+	<!-- UI layout -->
+	<div class="config-bar">
+		<div class="btn btn-config" onclick="toggleTab('db-connection')">Configuration</div>
+	</div>
+	<div class="counter-container">
+		<div class="counter-row">
+			<div class="counter"></div>
+			<label for="joborder" class="joborder">Job Order:</label>
+			<select type="text" id="month" class="month-select" onchange="handleMonthChange()">
+				<option value="JAN">JAN</option>
+				<option value="FEB">FEB</option>
+				<option value="MAR">MAR</option>
+				<option value="APR">APR</option>
+				<option value="MAY">MAY</option>
+				<option value="JUN">JUN</option>
+				<option value="JUL">JUL</option>
+				<option value="AUG">AUG</option>
+				<option value="STP">STP</option>
+				<option value="OCT">OCT</option>
+				<option value="NOV">NOV</option>
+				<option value="DEC">DEC</option>
+				<!-- Add more options for other months -->
+			</select>
+			<input type="text" id="jobOrder" value="" class="joborder-input">
+		</div>
+		<div class="btn-row">
+		<!-- <div class="btn btn-incr" onclick="counterAdd(1)">+1</div> -->
+		<!-- <div class="btn btn-decr" onclick="counterAdd(-1)">-1</div> -->
+		</div>
+		<div class="btn-row">
+			<div class="light-bulb" id="lightBulb"></div>
+			<div class="btn btn-test" onclick="startProcess()">Start</div>
+			<div class="btn btn-reset" onclick="resetCounter()">Reset</div> 
+		  </div>
+	</div>
+	<div class="tab-container" id="db-connection">
+		<label for="host">Host:</label>
+		<input type="text" id="dbHost" value=""><br>
+		<label for="port">Port:</label>
+		<input type="text" id="dbPort" value=""><br>
+		<label for="user">User:</label>
+		<input type="text" id="dbUser" value=""><br>
+		<label for="password">Password:</label>
+		<input type="password" id="dbPassword" value=""><br>
+		<label for="dbname">Database Name:</label>
+		<input type="text" id="dbName" value=""><br>
+		<label for="pcName">PC Name:</label>
+		<input type="text" id="PCname" value=""><br>
+		<label for="dirname">Directory Name:</label>
+		<input type="text" id="dirName" value=""><br>
+		<button class="btn btn-save" onclick="saveConfig()">Save</button>
+	</div>
+
+	<!-- Connect UI actions to Go functions -->
+	<script>
+		const counter = document.querySelector('.counter');
+
+		const NotifyStartComplete = (sig) => {
+		console.log('NotifyStart complete:', sig);
+			if (sig === 'complete') {
+				counterAdd(1);
+			}
+		};
+
+		window.NotifyStartComplete = NotifyStartComplete;
+
+		const render = async () => {
+			const counterValue = await window.counterValue(); // Call Go function to get the counter value
+			counter.innerText = `Count: ${counterValue}`;
+		};
+
+		const counterAdd = async (value) => {
+			await window.counterAdd(value); // Call Go function to increment the counter
+			render(); // Update the UI with the new counter value
+		};
+
+		const resetCounter = async () => {
+			await window.resetCounter(); // Call Go function to reset the counter to 0
+			render(); // Update the UI with the new counter value
+		};
+
+		const NotifyStart = async () => {
+			await window.NotifyStart();
+			const lightBulb = document.getElementById('lightBulb');
+			lightBulb.classList.toggle('active');
+		};
+
+		const toggleLightBulbColor = () => {
+			const lightBulb = document.getElementById('lightBulb');
+			if (lightBulb.classList.contains('red')) {
+				lightBulb.classList.remove('red');
+				lightBulb.classList.add('green');
+			} else {
+				lightBulb.classList.remove('green');
+				lightBulb.classList.add('red');
+			}
+		};
+
+		const startProcess = () => {
+			NotifyStart();
+			toggleLightBulbColor();
+			saveJob();
+		};
+
+		const saveConfig = async () => {
+		const dbHost = document.getElementById('dbHost').value;
+		const dbPort = document.getElementById('dbPort').value;
+		const dbUser = document.getElementById('dbUser').value;
+		const dbPassword = document.getElementById('dbPassword').value;
+		const dbName = document.getElementById('dbName').value;
+		const PCname = document.getElementById('PCname').value;
+		const dirName = document.getElementById('dirName').value;
+
+			// Call the Go function to save the configuration
+			await window.saveConfigGo(dbHost, dbPort, dbUser, dbPassword, dbName, PCname, dirName);
+		};
+
+		const saveJob = async () => {
+		const jobOrder = document.getElementById('jobOrder').value;
+		const jobMonth = document.getElementById('month').value;
+		await window.saveJobGo(jobOrder, jobMonth);
+		};
+
+		// Function to populate the configuration tab with environment values
+		const loadConfigGo = async () => {
+			try {
+				const configJSON = await window.loadConfigGo(); // Renamed the variable here
+				const config = JSON.parse(configJSON);
+
+				// Populate the input fields with the configuration values
+				document.getElementById('dbHost').value = config.dbHost;
+				document.getElementById('dbPort').value = config.dbPort;
+				document.getElementById('dbUser').value = config.dbUser;
+				document.getElementById('dbPassword').value = config.dbPassword;
+				document.getElementById('dbName').value = config.dbName;
+				document.getElementById('PCname').value = config.PCname;
+				document.getElementById('dirName').value = config.dirName;
+
+				// Show the tab container
+				showTabContainer();
+			} catch (error) {
+				console.error('Error loading configuration:', error);
+			}
+		}
+
+		// Function to show the tab container
+		function showTabContainer() {
+			const tabContainer = document.querySelector('.tab-container');
+			const homeContainer = document.querySelector('.counter-container');
+			tabContainer.style.display = 'block';
+			homeContainer.style.display = 'none';
+		}
+
+		// Function to hide the tab container
+		function hideTabContainer() {
+			const tabContainer = document.querySelector('.tab-container');
+			tabContainer.style.display = 'none';
+		}
+
+		// Function to show a specific tab
+		function showTab(tabId) {
+			const tab = document.getElementById(tabId);
+			if (tab) {
+				hideTabContainer();
+				tab.style.display = 'block';
+			}
+		}
+
+		// Function to toggle the visibility of the tab container
+		function toggleTab(tabId) {
+		const tabContainer = document.querySelector('.tab-container');
+		const tab = document.getElementById(tabId);
+		const homeContainer = document.querySelector('.counter-container'); // Add this line	
+			if (tabContainer.style.display === 'none') {
+				tabContainer.style.display = 'block';
+				tab.style.display = 'block';
+				homeContainer.style.display = 'none';
+				loadConfigGo();
+			} else {
+				tabContainer.style.display = 'none';
+				tab.style.display = 'none';
+				homeContainer.style.display = 'flex';
+			}
+		}
+
+		function handleMonthChange() {
+		const monthSelect = document.getElementById('month');
+		const selectedMonth = monthSelect.value;
+		// You can perform any actions based on the selected month here
+		}
+
+	render();
+	
+	</script>
+</body>
+
+</html>
